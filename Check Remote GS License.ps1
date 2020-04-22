@@ -2,6 +2,7 @@
 =============================================================
 == Terry Li
 == 2020/04/21 初始版本
+== 2020/04/22 修复多数据库的授权显示问题
 =============================================================
 #>
 
@@ -72,42 +73,63 @@ Get-Content $Path\config.ini | Foreach-Object {
     }
 }
 
-#$StationList = @()
 $flag = $false
+$GSStationResults = ""
 foreach($GSLicenseServer in $GSLicenseServerList){
     $PingQuery = "select * from win32_pingstatus where address = '$GSLicenseServer'"
     $PingResult = Get-WmiObject -query $PingQuery
+    $GSStationResult = "机器名称: $GSLicenseServer`r`n"
     if($PingResult.ProtocolAddress){
         $gsUrl = "http://"+$GSLicenseServer+"/GSImportExportService/GSImportExportService.asmx"
-        $GSWebProxy = New-WebServiceProxy -Uri $gsUrl
+        try{
+        $GSWebProxy = New-WebServiceProxy -Uri $gsUrl -ErrorAction stop
+        Write-Host "获取WebService成功!`r`n"
+        }
+        catch [Exception]{
+        $GSStationResult = $GSStationResult + "获取WebService失败!`r`n"
+        $GSStationResults = $GSStationResults + $GSStationResult + "`r`n"
+        $flag = $true
+        Write-Host "获取WebService失败!`r`n"
+        continue
+        }
+
         [Xml]$xmlVal = $GSWebProxy.GetStations()
         $Stations = $xmlVal.GSelector.Station
-        $GSStationResult = ""
         foreach($Station in $Stations){
             $StationName = $Station.name
             $StationProducts = $Station.Products
             $StationExpiryDate = $Station.ExpiryDate
-
+            try{
             $RemainDays = (New-TimeSpan $(Get-Date) $StationExpiryDate).Days
+            }
+            catch [exception]{
+            $GSStationResult = $GSStationResult + "没有检查到GS授权!`r`n"
+            $flag = $true
+            break
+            }
             if($RemainDays -gt 14){
-                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权到期日期: " + $StationExpiryDate + ", 还有" + $RemainDays + "天授权到期!`n`n"
+                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权到期日期: " + $StationExpiryDate + ", 还有" + $RemainDays + "天授权到期!`r`n"
                 }
             elseif(($RemainDays -lt 14) -and ($RemainDays -gt 0)){
-                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权到期日期: " + $StationExpiryDate + ", 还有" + $RemainDays + "天授权到期!`n`n"
+                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权到期日期: " + $StationExpiryDate + ", 还有" + $RemainDays + "天授权到期!`r`n"
                 $flag = $true
-            }
+                }
             else{
-                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权已过期, 请立即联系RCS工程师重新授权!`n`n"
-                $flag = $true 
+                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权已过期, 请立即联系RCS工程师重新授权!`r`n"
+                $flag = $true
+                }
             }
         }
+    else{
+        $GSStationResult = $GSStationResult + "机器离线!`r`n"
+        $flag = $true
+    }  
+$GSStationResults = $GSStationResults + $GSStationResult + "`r`n"    
+}
 
-        }
-    }
-
-Write-Host $GSStationResult
+Write-Host $GSStationResults
 
 #RCS Monitor Used
 
-$CheckData.OutString =  "------详情------`n$GSStationResult" 
+$CheckData.OutString =  "------详情------`r`n$GSStationResults" 
 $CheckData.OutState = $flag

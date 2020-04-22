@@ -4,16 +4,21 @@
 == 2020/04/20 初始版本
 == 2020/04/21 增加GS授权检测
 ==            增加操作系统版本检测
-== 检查清单：
-== 1.检查硬盘剩余空间
-== 2.检查网卡状态
-== 3.检查机器开机时间
-== 4.检查系统日志
-== 5.检查Zetta数据库
-== 6.检查GS数据库
-== 7.检查Zetta授权
-== 8.检查GS授权
-== 9.检查操作系统版本
+== 2020/04/22 修复Win7下运行结果的显示
+
+== 计算机检查清单：
+== 1.检查操作系统版本
+== 2.检查硬盘剩余空间
+== 3.检查网卡状态
+== 4.检查机器开机时间
+== 5.检查系统日志
+
+== RCS软件检查清单：
+== 1.检查Zetta数据库
+== 2.检查GS数据库
+== 3.检查Zetta授权
+== 4.检查GS授权
+
 =============================================================
 #>
 $RCSFileCreateDate = "{0:yyyyMMdd}" -f (Get-Date)
@@ -83,11 +88,59 @@ Get-Content $Path\config.ini | Foreach-Object {
     }
 }
 
-<#
+"
+RCS Check Result
+" | Out-File d:\$RCSFileName
+
+"
+计算机检查
+" | Out-File -Append d:\$RCSFileName
+
+"
 =============================================================
-== 1.检查硬盘剩余空间
+== 1.检查操作系统版本
 =============================================================
-#>
+" | Out-File -Append d:\$RCSFileName
+
+$BuildVersionResults = ""
+
+foreach ($ComputerName in $ComputerList){
+    $PingQuery = "select * from win32_pingstatus where address = '$ComputerName'"
+    $PingResult = Get-WmiObject -query $PingQuery
+    if($PingResult.ProtocolAddress){
+
+    if($PingResult.__SERVER -like $ComputerName){
+        $OperatingSystems = Get-WmiObject -class Win32_OperatingSystem -computername $ComputerName
+    }
+    else{
+        $OperatingSystems = Get-WmiObject -class Win32_OperatingSystem -Credential $Cred -computername $ComputerName
+    }
+        
+        $BuildVersionResult = "机器名称: $ComputerName`r`n"
+        foreach($OperatingSystem in $OperatingSystems)
+        {
+            $OperatingSystemCaption = $OperatingSystem.Caption
+            $OperatingSystemBuildNumber = $OperatingSystem.BuildNumber
+            $BuildVersionResult = $BuildVersionResult + "操作系统: " + $OperatingSystemCaption + ", 版本号: " + $OperatingSystemBuildNumber +"`r`n"
+
+        }
+    }
+    else{
+        $BuildVersionResult = "$ComputerName 离线!`r`n"
+    }
+    $BuildVersionResults = $BuildVersionResults + $BuildVersionResult + "`r`n"
+}
+
+"
+== 检查结果：
+" | Out-File -Append d:\$RCSFileName
+"$BuildVersionResults" | Out-File -Append d:\$RCSFileName
+
+"
+=============================================================
+== 2.检查硬盘剩余空间
+=============================================================
+" | Out-File -Append d:\$RCSFileName
 $DiskResults = ""
 $WarningComputersDisk = ""
 foreach ($ComputerName in $ComputerList){
@@ -101,7 +154,7 @@ foreach ($ComputerName in $ComputerList){
     else{
         $Disks = Get-WmiObject -Class win32_logicaldisk -Credential $Cred -computername $ComputerName -filter "DriveType=3"
         }
-        $DiskResult = "机器名称: $ComputerName`n"
+        $DiskResult = "机器名称: $ComputerName`r`n"
         foreach($Disk in $Disks)
         {
             $DiskSize = " {0:0.0} GB" -f ($Disk.Size/1GB)
@@ -109,27 +162,22 @@ foreach ($ComputerName in $ComputerList){
             $DiskDeviceID = $Disk.DeviceID
             $DiskVolumeName = $Disk.VolumeName
             $DiskPercentFree = [math]::Round((1-($Disk.FreeSpace/$Disk.Size))*100, 2)
-            $DiskResult = $DiskResult + "$DiskDeviceID $DiskVolumeName`n剩余空间:$DiskFreeSize $DiskPercentFree%" + "`n"
-            $WarningComputerDisk = "机器名称: $ComputerName`n"
+            $DiskResult = $DiskResult + "$DiskDeviceID $DiskVolumeName`r`n剩余空间:$DiskFreeSize $DiskPercentFree%" + "`r`n"
+            $WarningComputerDisk = "机器名称: $ComputerName`r`n"
             if($Disk.FreeSpace/1GB -lt 10)
             {
                 $Flag = $true
-                $WarningComputerDisk = $WarningComputerDisk + "$DiskDeviceID 盘剩余空间不足10GB, 请注意!`n"
-                $WarningComputersDisk = $WarningComputersDisk + $WarningComputerDisk + "`n"
+                $WarningComputerDisk = $WarningComputerDisk + "$DiskDeviceID 盘剩余空间不足10GB, 请注意!`r`n"
+                $WarningComputersDisk = $WarningComputersDisk + $WarningComputerDisk + "`r`n"
              }
         }
     }
     else{
-        $DiskResult = "$ComputerName 离线!`n"
+        $DiskResult = "$ComputerName 离线!`r`n"
     }
-    $DiskResults = $DiskResults + $DiskResult + "`n"
+    $DiskResults = $DiskResults + $DiskResult + "`r`n"
 }
 
-"
-=============================================================
-== 1.检查硬盘剩余空间
-=============================================================
-" | Out-File d:\$RCSFileName
 "
 == 检查结果：
 " | Out-File -Append d:\$RCSFileName
@@ -139,11 +187,11 @@ foreach ($ComputerName in $ComputerList){
 " | Out-File -Append d:\$RCSFileName
 "$WarningComputersDisk" | Out-File -Append d:\$RCSFileName
 
-<#
+"
 =============================================================
-== 2.检查网卡状态
+== 3.检查网卡状态
 =============================================================
-#>
+" | Out-File -Append d:\$RCSFileName
 
 $NetAdapterResults = ""
 #$NetAdaptersSpeedList = New-Object -TypeName System.Collections.ArrayList
@@ -161,32 +209,27 @@ foreach ($ComputerName in $ComputerList){
         $NetAdapters = Get-WmiObject -class Win32_NetworkAdapter -Credential $Cred -computername $ComputerName -Filter "PhysicalAdapter=True and NetEnabled=True"
         }
 
-        $NetAdapterResult = "机器名称: $ComputerName`n"
+        $NetAdapterResult = "机器名称: $ComputerName`r`n"
         
         foreach($NetAdapter in $NetAdapters)
         {
             $NetAdaptersSpeed = "{0:0.0} Gbps" -f ($NetAdapter.Speed/1000000000)
-            $NetAdapterResult = $NetAdapterResult + "网卡: " + $NetAdapter.NetConnectionID + ", 速度: " + $NetAdaptersSpeed + "`n"
-            $WarningComputerNet = "机器名称: $ComputerName`n"
+            $NetAdapterResult = $NetAdapterResult + "网卡: " + $NetAdapter.NetConnectionID + ", 速度: " + $NetAdaptersSpeed + "`r`n"
+            $WarningComputerNet = "机器名称: $ComputerName`r`n"
             if($NetAdapter.Speed/1000000000 -lt 1)
             {
                 $Flag = $true
-                $WarningComputerNet = $WarningComputerNet + $NetAdapter.NetConnectionID + " 网卡速度小于1Gbps!`n"
-                $WarningComputersNet = $WarningComputersNet + $WarningComputerNet + "`n"
+                $WarningComputerNet = $WarningComputerNet + $NetAdapter.NetConnectionID + " 网卡速度小于1Gbps!`r`n"
+                $WarningComputersNet = $WarningComputersNet + $WarningComputerNet + "`r`n"
             }
         }
     }
     else{
-        $NetAdapterResult = "$ComputerName 离线!`n"
+        $NetAdapterResult = "$ComputerName 离线!`r`n"
     }
-    $NetAdapterResults = $NetAdapterResults + $NetAdapterResult + "`n"
+    $NetAdapterResults = $NetAdapterResults + $NetAdapterResult + "`r`n"
 }
 
-"
-=============================================================
-== 2.检查网卡状态
-=============================================================
-" | Out-File -Append d:\$RCSFileName
 "
 == 检查结果：
 " | Out-File -Append d:\$RCSFileName
@@ -196,11 +239,11 @@ foreach ($ComputerName in $ComputerList){
 " | Out-File -Append d:\$RCSFileName
 "$WarningComputersNet" | Out-File -Append d:\$RCSFileName
 
-<#
+"
 =============================================================
-== 3.检查机器开机时间
+== 4.检查机器开机时间
 =============================================================
-#>
+" | Out-File -Append d:\$RCSFileName
 
 $LastBootTimeResults = ""
 $WarningComputersLastBoot = ""
@@ -217,33 +260,28 @@ foreach ($ComputerName in $ComputerList){
         $LastBootTimes = Get-WmiObject -class Win32_OperatingSystem -Credential $Cred -computername $ComputerName
     }
         
-        $LastBootTimeResult = "机器名称: $ComputerName`n"
+        $LastBootTimeResult = "机器名称: $ComputerName`r`n"
         $WarningComputerLastBoot = ""
         foreach($LastBootTime in $LastBootTimes)
         {
             $LastBootDate = $LastBootTime.ConvertToDateTime($LastBootTime.lastbootuptime)
-            $LastBootTimeResult = $LastBootTimeResult + "上次开机时间:" + $LastBootDate + "`n"
+            $LastBootTimeResult = $LastBootTimeResult + "上次开机时间:" + $LastBootDate + "`r`n"
             $DateResult = $LastBootDate.Date
             $BootTimeSpan = New-TimeSpan $DateResult $(Get-Date)
             Write-Host $ComputerName $BootTimeSpan.Days "天没有重启了"
             if($BootTimeSpan.Days -ge 30){
                 $Flag = $true
-                $WarningComputerLastBoot = $WarningComputerLastBoot + "$ComputerName 超过30天没有重启了!`n"
-                $WarningComputersLastBoot = $WarningComputersLastBoot + $WarningComputerLastBoot + "`n"
+                $WarningComputerLastBoot = $WarningComputerLastBoot + "$ComputerName 超过30天没有重启了!`r`n"
+                $WarningComputersLastBoot = $WarningComputersLastBoot + $WarningComputerLastBoot + "`r`n"
             }
         }
     }
     else{
-        $LastBootTimeResult = "$ComputerName 离线!`n"
+        $LastBootTimeResult = "$ComputerName 离线!`r`n"
     }
-    $LastBootTimeResults = $LastBootTimeResults + $LastBootTimeResult + "`n"
+    $LastBootTimeResults = $LastBootTimeResults + $LastBootTimeResult + "`r`n"
 }
 
-"
-=============================================================
-== 3.检查机器开机时间
-=============================================================
-" | Out-File -Append d:\$RCSFileName
 "
 == 检查结果：
 " | Out-File -Append d:\$RCSFileName
@@ -253,11 +291,11 @@ foreach ($ComputerName in $ComputerList){
 " | Out-File -Append d:\$RCSFileName
 "$WarningComputersLastBoot" | Out-File -Append d:\$RCSFileName
 
-<#
+"
 =============================================================
-== 4.检查系统日志
+== 5.检查系统日志
 =============================================================
-#>
+" | Out-File -Append d:\$RCSFileName
 
 $StartTime = [datetime]::today
 $EndTime = [datetime]::now
@@ -284,7 +322,7 @@ foreach ($ComputerName in $ComputerList){
         $events = Get-WinEvent -Credential $Cred -computername $ComputerName -FilterHashtable $EventFilter -MaxEvents 5
     }
         
-        $EventResult = "机器名称: $ComputerName`n"
+        $EventResult = "机器名称: $ComputerName`r`n"
         if($events){        
             foreach($event in $events){
                 $EventTime = $event.TimeCreated
@@ -292,31 +330,30 @@ foreach ($ComputerName in $ComputerList){
                 $EventLevel = $event.LevelDisplayName
                 $EventMessage = $event.Message
                 $Flag = $true
-                $EventResult = $EventResult + "$EventTime $EventName $EventLevel`n"
+                $EventResult = $EventResult + "$EventTime $EventName $EventLevel`r`n"
                 }
             }
         else{
-            $EventResult = $EventResult + "正常`n"
+            $EventResult = $EventResult + "正常`r`n"
             }
-        $EventResults = $EventResults + $EventResult + "`n"
+        $EventResults = $EventResults + $EventResult + "`r`n"
         }
 }
 
-"
-=============================================================
-== 4.检查系统日志
-=============================================================
-" | Out-File -Append d:\$RCSFileName
 "
 == 检查结果：
 " | Out-File -Append d:\$RCSFileName
 "$EventResults" | Out-File -Append d:\$RCSFileName
 
-<#
+"
+RCS软件检查
+" | Out-File -Append d:\$RCSFileName
+
+"
 =============================================================
-== 5.检查Zetta数据库
+== 1.检查Zetta数据库
 =============================================================
-#>
+" | Out-File -Append d:\$RCSFileName
 
 $QueryResultsZetta=""
 $WarningComputersZetta=""
@@ -326,7 +363,7 @@ foreach($ZettaInstance in $ZettaInstanceList){
     $DatabaseName="ZettaDB"
     $UserName="sa"
     $Password="12h2oSt"
-    $QueryResultZetta ="机器名称: $ServerName`n"
+    $QueryResultZetta ="机器名称: $ServerName`r`n"
     $Query="
     select name, convert(float,size) * (8192.0/1024.0)/1024 from dbo.sysfiles
     SELECT database_name,MAX(backup_finish_date) AS backup_finish_date  FROM msdb.dbo.backupset where database_name = 'ZettaDB' GROUP BY database_name
@@ -343,8 +380,8 @@ foreach($ZettaInstance in $ZettaInstanceList){
         Write-Warning "无法连接数据库."
         $Conn.Dispose()
         $flag=$true
-        $WarningComputer= "无法连接 " + $ServerName + " 数据库." + "`n"
-        $WarningComputersZetta = $WarningComputersZetta + $WarningComputerZetta + "`n"
+        $WarningComputer= "无法连接 " + $ServerName + " 数据库." + "`r`n"
+        $WarningComputersZetta = $WarningComputersZetta + $WarningComputerZetta + "`r`n"
         break
     }
     $SqlCommand=New-Object system.Data.SqlClient.SqlCommand($Query,$Conn)
@@ -357,29 +394,25 @@ foreach($ZettaInstance in $ZettaInstanceList){
     $3 = $DataSet.Tables.name
     $4 = $DataSet.Tables.Column1
     $DBResults=""
-    $WarningComputerZetta = "机器名称: $ServerName`n"
+    $WarningComputerZetta = "机器名称: $ServerName`r`n"
     for($i=0;$i -lt $3.count;$i++){
         if($3[$i]){
             $DBResult = $3[$i] + "的文件大小为: " + $4[$i] + "MB"
-            $DBResults = $DBResults + $DBResult + "`n"
+            $DBResults = $DBResults + $DBResult + "`r`n"
             if($4[$i] -gt 4096){
                 $flag=$true
-                $WarningComputerZetta = $WarningComputerZetta + $3[$i] + "大小超过4GB."+ "`n"
-                $WarningComputersZetta = $WarningComputersZetta + $WarningComputerZetta + "`n"
+                $WarningComputerZetta = $WarningComputerZetta + $3[$i] + "大小超过4GB."+ "`r`n"
+                $WarningComputersZetta = $WarningComputersZetta + $WarningComputerZetta + "`r`n"
             }
             }
         }
-         
-    $QueryResultZetta =  $QueryResultZetta + $DatabaseName + "的最新备份时间为: " + $2 + "`n" + $DBResults + "`n"
-    $QueryResultsZetta = $QueryResultsZetta + $QueryResultZetta + "`n"
+    $ServerName | out-file -Append d:\$RCSFileName
+    $DataSet.Tables | fl | out-file -Append d:\$RCSFileName     
+    $QueryResultZetta =  $QueryResultZetta + $DatabaseName + "的最新备份时间为: " + $2 + "`r`n" + $DBResults + "`r`n"
+    $QueryResultsZetta = $QueryResultsZetta + $QueryResultZetta + "`r`n"
     $Conn.Close()
 }
 
-"
-=============================================================
-== 5.检查Zetta数据库
-=============================================================
-" | Out-File -Append d:\$RCSFileName
 "
 == 检查结果：
 " | Out-File -Append d:\$RCSFileName
@@ -389,11 +422,11 @@ $QueryResultsZetta | Out-File -Append d:\$RCSFileName
 " | Out-File -Append d:\$RCSFileName
 $WarningComputersZetta | Out-File -Append d:\$RCSFileName
 
-<#
+"
 =============================================================
-== 6.检查GS数据库
+== 2.检查GS数据库
 =============================================================
-#>
+" | Out-File -Append d:\$RCSFileName
 
 $QueryResultsGS=""
 $WarningComputersGS=""
@@ -404,8 +437,8 @@ foreach($GSInstance in $GSInstanceList){
     $UserName="sa"
     $Password="12h2oSt"
     $DBResults=""
-    $WarningComputerGS = "机器名称: $ServerName`n"
-    $QueryResultGS="机器名称: $ServerName`n"
+    $WarningComputerGS = "机器名称: $ServerName`r`n"
+    $QueryResultGS="机器名称: $ServerName`r`n"
     $Query="
     select name, convert(float,size) * (8192.0/1024.0)/1024 from dbo.sysfiles
     SELECT database_name,MAX(backup_finish_date) AS backup_finish_date  FROM msdb.dbo.backupset where database_name = 'gs' GROUP BY database_name
@@ -422,15 +455,15 @@ foreach($GSInstance in $GSInstanceList){
         Write-Warning "无法连接数据库."
         $Conn.Dispose()
         $flag=$true
-        $WarningComputerGS= "无法连接 " + $ServerName + " 数据库." + "`n"
-        $WarningComputersGS = $WarningComputersGS + $WarningComputerGS + "`n"
+        $WarningComputerGS= "无法连接 " + $ServerName + " 数据库." + "`r`n"
+        $WarningComputersGS = $WarningComputersGS + $WarningComputerGS + "`r`n"
         break
     }
     $SqlCommand=New-Object system.Data.SqlClient.SqlCommand($Query,$Conn)
     $DataSet=New-Object system.Data.DataSet
     $SqlDataAdapter=New-Object system.Data.SqlClient.SqlDataAdapter($SqlCommand)
     [void]$SqlDataAdapter.fill($DataSet)
-#    $DataSet.Tables | fl
+    
     $1 = $DataSet.Tables.database_name
     $2 = $DataSet.Tables.backup_finish_date
     $3 = $DataSet.Tables.name
@@ -439,25 +472,21 @@ foreach($GSInstance in $GSInstanceList){
     for($i=0;$i -lt $3.count;$i++){
         if($3[$i]){
             $DBResult = $3[$i] + "的文件大小为: " + $4[$i] + "MB"
-            $DBResults = $DBResults + $DBResult + "`n"
+            $DBResults = $DBResults + $DBResult + "`r`n"
             if($4[$i] -gt 4096){
                 $flag=$true
-                $WarningComputerGS = $WarningComputerGS + $3[$i] + "大小超过4GB."+ "`n"
-                $WarningComputersGS = $WarningComputersGS + $WarningComputerGS + "`n"
+                $WarningComputerGS = $WarningComputerGS + $3[$i] + "大小超过4GB."+ "`r`n"
+                $WarningComputersGS = $WarningComputersGS + $WarningComputerGS + "`r`n"
             }
             }
         }
-         
-    $QueryResultGS =  $QueryResultGS + $DatabaseName + "的最新备份时间为: " + $2 + "`n" + $DBResults + "`n"
-    $QueryResultsGS = $QueryResultsGS + $QueryResultGS + "`n"
+    $ServerName | out-file -Append d:\$RCSFileName
+    $DataSet.Tables | fl | out-file -Append d:\$RCSFileName
+    $QueryResultGS =  $QueryResultGS + $DatabaseName + "的最新备份时间为: " + $2 + "`r`n" + $DBResults + "`r`n"
+    $QueryResultsGS = $QueryResultsGS + $QueryResultGS + "`r`n"
     $Conn.Close()
 }
 
-"
-=============================================================
-== 6.检查GS数据库
-=============================================================
-" | Out-File -Append d:\$RCSFileName
 "
 == 检查结果：
 " | Out-File -Append d:\$RCSFileName
@@ -467,11 +496,11 @@ $QueryResultsGS | Out-File -Append d:\$RCSFileName
 " | Out-File -Append d:\$RCSFileName
 $WarningComputersGS | Out-File -Append d:\$RCSFileName
 
-<#
+"
 =============================================================
-== 7.检查Zetta授权
+== 3.检查Zetta授权
 =============================================================
-#>
+" | Out-File -Append d:\$RCSFileName
 
 $ZettaLicenseResults = ""
 
@@ -496,7 +525,7 @@ foreach($ZettaLicenseServer in $ZettaLicenseServerList){
             }
         $Day = $(Get-Date).Day
         $ZettaDebugList = Get-ChildItem $ZettaDebugPathURL -Recurse -Include *"$Day"_Zetta.StartupManager.exe* -Filter *.xlog
-        $ZettaLicenseResult = "机器名称: $ZettaLicenseServer`n"
+        $ZettaLicenseResult = "机器名称: $ZettaLicenseServer`r`n"
         if($ZettaDebugList){
             $ZettaDebugFile = $ZettaDebugList | Sort-Object LastAccessTime -Descending | Select-Object -Index 0 | Select-Object -Property Name
             $ZettaDebugFileName = $ZettaDebugFile.name
@@ -515,139 +544,108 @@ foreach($ZettaLicenseServer in $ZettaLicenseServerList){
             $RemainDays = (New-TimeSpan $(Get-Date) $DateResult).Days
 
             if($RemainDays -ge 14){
-                $ZettaLicenseResult = $ZettaLicenseResult + "授权到期日期: "+$DateResult+", 还有"+$RemainDays+"天授权到期!`n"
+                $ZettaLicenseResult = $ZettaLicenseResult + "授权到期日期: "+$DateResult+", 还有"+$RemainDays+"天授权到期!`r`n"
                 break
                 }
             elseif(($RemainDays -lt 14) -and ($RemainDays -gt 0)){
-                $ZettaLicenseResult = $ZettaLicenseResult + "授权到期日期: "+$DateResult+", 还有"+$RemainDays+"天授权到期!`n"
+                $ZettaLicenseResult = $ZettaLicenseResult + "授权到期日期: "+$DateResult+", 还有"+$RemainDays+"天授权到期!`r`n"
                 $flag = $true
                 break
                 }
             else{
-                $ZettaLicenseResult = $ZettaLicenseResult + "授权已过期, 请立即联系RCS工程师重新授权!`n"
+                $ZettaLicenseResult = $ZettaLicenseResult + "授权已过期, 请立即联系RCS工程师重新授权!`r`n"
                 $flag = $true
                 break
                 }
             }
             else{
-                $ZettaLicenseResult = $ZettaLicenseResult + "成功读取到Zetta日志, 但是没有检测到Zetta授权, 请检查Zetta日志目录设置!`n"
+                $ZettaLicenseResult = $ZettaLicenseResult + "成功读取到Zetta日志, 但是没有检测到Zetta授权, 请检查Zetta日志目录设置!`r`n"
                 $flag = $true
                 }
             }
     
         else{
-            $ZettaLicenseResult = $ZettaLicenseResult + "没有检查到Zetta授权, 请打开Zetta!`n"
+            $ZettaLicenseResult = $ZettaLicenseResult + "没有检查到Zetta授权, 请打开Zetta!`r`n"
             $flag = $true   
             }
         }
     }
     else{
-        $ZettaLicenseResult = "$ZettaLicenseServer 离线!`n"
+        $ZettaLicenseResult = "$ZettaLicenseServer 离线!`r`n"
         $flag = $true
         }
 
-$ZettaLicenseResults = $ZettaLicenseResults + $ZettaLicenseResult + "`n"
+$ZettaLicenseResults = $ZettaLicenseResults + $ZettaLicenseResult + "`r`n"
 
 }
 
-"
-=============================================================
-== 7.检查Zetta授权
-=============================================================
-" | Out-File -Append d:\$RCSFileName
+
 "
 == 检查结果：
 " | Out-File -Append d:\$RCSFileName
 "$ZettaLicenseResults" | Out-File -Append d:\$RCSFileName
 
-<#
+"
 =============================================================
-== 8.检查GS授权
+== 4.检查GS授权
 =============================================================
-#>
+" | Out-File -Append d:\$RCSFileName
 
+$GSStationResults = ""
 foreach($GSLicenseServer in $GSLicenseServerList){
     $PingQuery = "select * from win32_pingstatus where address = '$GSLicenseServer'"
     $PingResult = Get-WmiObject -query $PingQuery
+    $GSStationResult = "机器名称: $GSLicenseServer`r`n"
     if($PingResult.ProtocolAddress){
         $gsUrl = "http://"+$GSLicenseServer+"/GSImportExportService/GSImportExportService.asmx"
-        $GSWebProxy = New-WebServiceProxy -Uri $gsUrl
+        try{
+        $GSWebProxy = New-WebServiceProxy -Uri $gsUrl -ErrorAction stop
+        Write-Host "获取WebService成功!`r`n"
+        }
+        catch [Exception]{
+        $GSStationResult = $GSStationResult + "获取WebService失败!`r`n"
+        $GSStationResults = $GSStationResults + $GSStationResult + "`r`n"
+        $flag = $true
+        Write-Host "获取WebService失败!`r`n"
+        continue
+        }
+
         [Xml]$xmlVal = $GSWebProxy.GetStations()
         $Stations = $xmlVal.GSelector.Station
-        $GSStationResult = ""
         foreach($Station in $Stations){
             $StationName = $Station.name
             $StationProducts = $Station.Products
             $StationExpiryDate = $Station.ExpiryDate
-
+            try{
             $RemainDays = (New-TimeSpan $(Get-Date) $StationExpiryDate).Days
+            }
+            catch [exception]{
+            $GSStationResult = $GSStationResult + "没有检查到GS授权!`r`n"
+            $flag = $true
+            break
+            }
             if($RemainDays -gt 14){
-                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权到期日期: " + $StationExpiryDate + ", 还有" + $RemainDays + "天授权到期!`n`n"
+                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权到期日期: " + $StationExpiryDate + ", 还有" + $RemainDays + "天授权到期!`r`n"
                 }
             elseif(($RemainDays -lt 14) -and ($RemainDays -gt 0)){
-                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权到期日期: " + $StationExpiryDate + ", 还有" + $RemainDays + "天授权到期!`n`n"
+                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权到期日期: " + $StationExpiryDate + ", 还有" + $RemainDays + "天授权到期!`r`n"
                 $flag = $true
-            }
+                }
             else{
-                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权已过期, 请立即联系RCS工程师重新授权!`n`n"
-                $flag = $true 
+                $GSStationResult = $GSStationResult + "电台: " + $StationName + ", 授权已过期, 请立即联系RCS工程师重新授权!`r`n"
+                $flag = $true
+                }
             }
         }
-
-        }
-    }
-
-"
-=============================================================
-== 8.检查GS授权
-=============================================================
-" | Out-File -Append d:\$RCSFileName
-"
-== 检查结果：
-" | Out-File -Append d:\$RCSFileName
-"$GSStationResult" | Out-File -Append d:\$RCSFileName
-
-<#
-=============================================================
-== 9.检查操作系统版本
-=============================================================
-#>
-
-$BuildVersionResults = ""
-
-foreach ($ComputerName in $ComputerList){
-    $PingQuery = "select * from win32_pingstatus where address = '$ComputerName'"
-    $PingResult = Get-WmiObject -query $PingQuery
-    if($PingResult.ProtocolAddress){
-
-    if($PingResult.__SERVER -like $ComputerName){
-        $OperatingSystems = Get-WmiObject -class Win32_OperatingSystem -computername $ComputerName
-    }
     else{
-        $OperatingSystems = Get-WmiObject -class Win32_OperatingSystem -Credential $Cred -computername $ComputerName
-    }
-        
-        $BuildVersionResult = "机器名称: $ComputerName`n"
-        foreach($OperatingSystem in $OperatingSystems)
-        {
-            $OperatingSystemCaption = $OperatingSystem.Caption
-            $OperatingSystemBuildNumber = $OperatingSystem.BuildNumber
-            $BuildVersionResult = $BuildVersionResult + "操作系统: " + $OperatingSystemCaption + ", 版本号: " + $OperatingSystemBuildNumber +"`n"
-
-        }
-    }
-    else{
-        $BuildVersionResult = "$ComputerName 离线!`n"
-    }
-    $BuildVersionResults = $BuildVersionResults + $BuildVersionResult + "`n"
+        $GSStationResult = $GSStationResult + "机器离线!`r`n"
+        $flag = $true
+    }  
+$GSStationResults = $GSStationResults + $GSStationResult + "`r`n"    
 }
 
 "
-=============================================================
-== 9.检查操作系统版本
-=============================================================
-" | Out-File -Append d:\$RCSFileName
-"
 == 检查结果：
 " | Out-File -Append d:\$RCSFileName
-"$BuildVersionResults" | Out-File -Append d:\$RCSFileName
+"$GSStationResults" | Out-File -Append d:\$RCSFileName
+

@@ -88,7 +88,7 @@ foreach($GSInstance in $GSInstanceList){
     $DataSet=New-Object system.Data.DataSet
     $SqlDataAdapter=New-Object system.Data.SqlClient.SqlDataAdapter($SqlCommand)
     [void]$SqlDataAdapter.fill($DataSet)
-#    $DataSet.Tables | fl
+    $DataSet.Tables | fl
     $1 = $DataSet.Tables.database_name
     $2 = $DataSet.Tables.backup_finish_date
     $3 = $DataSet.Tables.name
