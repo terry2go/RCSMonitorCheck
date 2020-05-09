@@ -3,6 +3,7 @@
 == Terry Li
 == 2020/04/17 初始版本
 == 2020/04/20 修复检查本机没有显示结果的问题
+== 2020/04/30 修复运行过程中的错误信息显示
 =============================================================
 #>
 
@@ -45,11 +46,12 @@ $StartTime = [datetime]::today
 $EndTime = [datetime]::now
 $Flag = $false
 $EventResults = ""
-$WarningComputers = ""
+$WarningComputersEventLogs = ""
 
 foreach ($ComputerName in $ComputerList){
     $PingQuery = "select * from win32_pingstatus where address = '$ComputerName'"
     $PingResult = Get-WmiObject -query $PingQuery
+    
     if($PingResult.ProtocolAddress){
 
         $EventFilter = @{Logname='System','Application'
@@ -60,13 +62,34 @@ foreach ($ComputerName in $ComputerList){
                  }
 
     if($PingResult.__SERVER -like $ComputerName){
-        $events = Get-WinEvent -computername $ComputerName -FilterHashtable $EventFilter -MaxEvents 5
+        
+        try{
+        $events = Get-WinEvent -computername $ComputerName -FilterHashtable $EventFilter -MaxEvents 5 -ErrorAction SilentlyContinue
+        }
+        catch [exception]
+        {
+        Write-Host "$ComputerName 发现异常, 无法检查系统日志."
+        $WarningComputersEventLog = ""
+        $WarningComputersEventLog = $WarningComputersEventLog + "$ComputerName 发现异常, 无法检查系统日志.`r`n"
+        $Flag = $true
+        continue
+        }
     }
     else{
-        $events = Get-WinEvent -Credential $Cred -computername $ComputerName -FilterHashtable $EventFilter -MaxEvents 5
+        try{
+        $events = Get-WinEvent -Credential $Cred -computername $ComputerName -FilterHashtable $EventFilter -MaxEvents 5 -ErrorAction SilentlyContinue
+        }
+        catch [exception]
+        {
+        Write-Host "$ComputerName 发现异常, 无法检查系统日志."
+        $WarningComputersEventLog = ""
+        $WarningComputersEventLog = $WarningComputersEventLog + "$ComputerName 发现异常, 无法检查系统日志.`r`n"
+        $Flag = $true
+        continue
+        }
     }
-        
-        $EventResult = "机器名称: $ComputerName`n"
+       
+        $EventResult = "机器名称: $ComputerName`r`n"
         if($events){        
             foreach($event in $events){
                 $EventTime = $event.TimeCreated
@@ -74,19 +97,23 @@ foreach ($ComputerName in $ComputerList){
                 $EventLevel = $event.LevelDisplayName
                 $EventMessage = $event.Message
                 $Flag = $true
-                $EventResult = $EventResult + "$EventTime $EventName $EventLevel`n"
+                $EventResult = $EventResult + "$EventTime $EventName $EventLevel`r`n"
                 }
             }
         else{
-            $EventResult = $EventResult + "正常`n"
+            $EventResult = $EventResult + "正常`r`n"
             }
-        $EventResults = $EventResults + $EventResult + "`n"
+        $EventResults = $EventResults + $EventResult + "`r`n"
         }
 }
 
-Write-Host "$EventResults"
-$Flag
+Write-Host "
+== 检查结果：
+$EventResults
+== 错误信息:
+$WarningComputersEventLog
+"
 
 #RCS Monitor Used
-$CheckData.OutString =  "------详情------`n$EventResults" 
+$CheckData.OutString =  "------警告------`n$WarningComputersEventLog`n------详情------`n$EventResults" 
 $CheckData.OutState = $Flag

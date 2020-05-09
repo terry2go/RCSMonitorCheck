@@ -5,6 +5,8 @@
 == 2020/04/20 修复检查本机提示错误的问题
 ==            修复xlog文件里读取不到授权的报错
 ==            支持检查多个Zetta Debug目录
+== 2020/05/08 修复5.20.1.617 xlog文件中加入计算机名称的问题
+== 2020/05/09 修复5月9号，会读取4月29号的xlog文件
 =============================================================
 #>
 
@@ -87,13 +89,13 @@ foreach($ZettaLicenseServer in $ZettaLicenseServerList){
 #    $DebugPath = '\\'+$ZettaLicenseServer+'\c$\ProgramData\RCS\Zetta\!Logging\Debug'
         $ZettaDebugPathURL = '\\'+$ZettaLicenseServer+$ZettaDebugPath
         $ZettaDebugPathURL
-        if($PingResult.__SERVER -like $ComputerName){}
+        if($PingResult.__SERVER -like $ZettaLicenseServer){}
         else{
             net use \\$ZettaLicenseServer\c$ /USER:RCS-USER RCS /PERSISTENT:YES
             net use \\$ZettaLicenseServer\d$ /USER:RCS-USER RCS /PERSISTENT:YES
             }
-        $Day = $(Get-Date).Day
-        $ZettaDebugList = Get-ChildItem $ZettaDebugPathURL -Recurse -Include *"$Day"_Zetta.StartupManager.exe* -Filter *.xlog
+        $Day = "{0:dd}" -f (Get-Date)
+        $ZettaDebugList = Get-ChildItem $ZettaDebugPathURL -Recurse -Include *"$Day"*Zetta.StartupManager.exe* -Filter *.xlog
         $ZettaLicenseResult = "机器名称: $ZettaLicenseServer`n"
         if($ZettaDebugList){
             $ZettaDebugFile = $ZettaDebugList | Sort-Object LastAccessTime -Descending | Select-Object -Index 0 | Select-Object -Property Name

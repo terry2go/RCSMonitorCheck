@@ -3,6 +3,8 @@
 == Terry Li
 == 2020/04/21 初始版本
 == 2020/04/22 修复多数据库的授权显示问题
+== 2020/04/30 增加软件版本检查
+== 2020/05/09 加入“可以获取GS WebService，但是无法调用函数”的错误提示
 =============================================================
 #>
 
@@ -83,18 +85,31 @@ foreach($GSLicenseServer in $GSLicenseServerList){
         $gsUrl = "http://"+$GSLicenseServer+"/GSImportExportService/GSImportExportService.asmx"
         try{
         $GSWebProxy = New-WebServiceProxy -Uri $gsUrl -ErrorAction stop
-        Write-Host "获取WebService成功!`r`n"
+        Write-Host "$GSLicenseServer 获取WebService成功!`r`n"
         }
         catch [Exception]{
         $GSStationResult = $GSStationResult + "获取WebService失败!`r`n"
         $GSStationResults = $GSStationResults + $GSStationResult + "`r`n"
         $flag = $true
-        Write-Host "获取WebService失败!`r`n"
+        Write-Host "$GSLicenseServer 获取WebService失败!`r`n"
         continue
         }
 
-        [Xml]$xmlVal = $GSWebProxy.GetStations()
+        try{
+            [Xml]$xmlVal = $GSWebProxy.GetStations()
+            }
+        catch [exception]{
+            $GSStationResult = $GSStationResult + "获取电台信息失败!`r`n"
+            $GSStationResults = $GSStationResults + $GSStationResult + "`r`n"
+            $flag = $true
+            Write-Host "$GSLicenseServer 获取电台信息失败!`r`n"
+            continue
+            }
         $Stations = $xmlVal.GSelector.Station
+        $FirstStationID = $Stations[0].internalID
+        [Xml]$xmlVal2 = $GSWebProxy.GetSystemInfo($FirstStationID)
+        $GSVersion = $xmlVal2.SystemInfo.version
+        $GSStationResult = $GSStationResult + "GS版本为: $GSVersion`r`n"
         foreach($Station in $Stations){
             $StationName = $Station.name
             $StationProducts = $Station.Products
