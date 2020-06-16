@@ -3,11 +3,13 @@
 == Terry Li
 == 2020/04/17 初始版本
 == 2020/04/20 修复检查本机没有显示结果的问题
+== 2020/05/28 加入警告弹窗
 =============================================================
 #>
 
 $ComputerList = @()
 $Path = 'D:\Bat\RCSMonitor'
+$MessageBox = [System.Windows.Forms.MessageBox]
 
 $settingsKeys = @{
     ComputerName = "^\s*ComputerName\s*$";
@@ -75,6 +77,11 @@ foreach ($ComputerName in $ComputerList){
 
 Write-Host "$LastBootTimeResults"
 Write-Host "$WarningComputers"
+
+if($Flag)
+{
+    $MessageBox::Show("$WarningComputers","机器运行时间警告")
+}
 
 #RCS Monitor Used
 $CheckData.OutString =  "------警告------`n$WarningComputers`n------详情------`n$LastBootTimeResults" 

@@ -3,11 +3,14 @@
 == Terry Li
 == 2020/04/17 初始版本
 == 2020/04/20 修复检查本机没有显示结果的问题
+== 2020/05/28 加入警告弹窗
+== 2020/06/10 修复Team网卡显示的问题
 =============================================================
 #>
 
 $ComputerList = @()
 $Path = 'D:\Bat\RCSMonitor'
+$MessageBox = [System.Windows.Forms.MessageBox]
 
 $settingsKeys = @{
     ComputerName = "^\s*ComputerName\s*$";
@@ -53,7 +56,15 @@ foreach ($ComputerName in $ComputerList){
         }
 
         $NetAdapterResult = "机器名称: $ComputerName`n"
-        
+        $NetFlag = $false
+        foreach($NetAdapter in $NetAdapters){
+            if($NetAdapter.PNPDeviceID -notlike "*PCI*" -and $NetAdapter.ServiceName -notlike "*VBox*" -and $NetAdapter.ServiceName -notlike "*VM*"){
+                $NetFlag = $True
+                Write-Host "$ComputerName 的网卡有组Team."
+            }
+        }
+        if($NetFlag){
+        $NetAdapters = $NetAdapters | Where-Object {$_.PNPDeviceID -NotLike "*PCI*"}
         foreach($NetAdapter in $NetAdapters)
         {
             $NetAdaptersSpeed = "{0:0.0} Gbps" -f ($NetAdapter.Speed/1000000000)
@@ -66,6 +77,21 @@ foreach ($ComputerName in $ComputerList){
                 $WarningComputers = $WarningComputers + $WarningComputer + "`n"
             }
         }
+        }else{
+        $NetAdapters = $NetAdapters | Where-Object {$_.PNPDeviceID -Like "*PCI*"}
+        foreach($NetAdapter in $NetAdapters)
+        {
+            $NetAdaptersSpeed = "{0:0.0} Gbps" -f ($NetAdapter.Speed/1000000000)
+            $NetAdapterResult = $NetAdapterResult + "网卡: " + $NetAdapter.NetConnectionID + ", 速度: " + $NetAdaptersSpeed + "`n"
+            $WarningComputer = "机器名称: $ComputerName`n"
+            if($NetAdapter.Speed/1000000000 -lt 1)
+            {
+                $Flag = $true
+                $WarningComputer = $WarningComputer + $NetAdapter.NetConnectionID + " 网卡速度小于1Gbps!`n"
+                $WarningComputers = $WarningComputers + $WarningComputer + "`n"
+            }
+        }
+        }
     }
     else{
         $NetAdapterResult = "$ComputerName 离线!`n"
@@ -76,6 +102,10 @@ foreach ($ComputerName in $ComputerList){
 Write-Host "$NetAdapterResults"
 Write-Host "$WarningComputers"
 
+if($Flag)
+{
+    $MessageBox::Show("$WarningComputers","网卡警告")
+}
 
 $CheckData.OutString =  "------警告------`n$WarningComputers`n------详情------`n$NetAdapterResults" 
 $CheckData.OutState = $flag

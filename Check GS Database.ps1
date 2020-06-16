@@ -3,6 +3,7 @@
 == Terry Li
 == 2020/04/17 初始版本
 == 2020/04/20 加入无法连接数据库时的错误警告
+== 2020/05/26 加入警告弹窗
 =============================================================
 #>
 
@@ -10,6 +11,7 @@ $ComputerList = @()
 $ProviderNameList = @()
 $GSInstanceList = @()
 $Path = 'D:\Bat\RCSMonitor'
+$MessageBox = [System.Windows.Forms.MessageBox]
 
 $settingsKeys = @{
     ComputerName = "^\s*ComputerName\s*$";
@@ -93,7 +95,6 @@ foreach($GSInstance in $GSInstanceList){
     $2 = $DataSet.Tables.backup_finish_date
     $3 = $DataSet.Tables.name
     $4 = $DataSet.Tables.Column1
-
     for($i=0;$i -lt $3.count;$i++){
         if($3[$i]){
             $DBResult = $3[$i] + "的文件大小为: " + $4[$i] + "MB"
@@ -105,17 +106,20 @@ foreach($GSInstance in $GSInstanceList){
             }
             }
         }
-         
     $QueryResult =  $QueryResult + $DatabaseName + "的最新备份时间为: " + $2 + "`n" + $DBResults + "`n"
     $QueryResults = $QueryResults + $QueryResult + "`n"
     $Conn.Close()
 }
 
-
 Write-Host $QueryResults
 Write-Host $flag
 Write-Host $WarningComputers
 #RCS Monitor Used
+
+if($flag)
+{
+    $MessageBox::Show("$WarningComputers","数据库警告")
+}
 
 $CheckData.OutString =  "------警告------`n$WarningComputers`n------详情------`n$QueryResults" 
 $CheckData.OutState = $flag

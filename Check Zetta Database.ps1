@@ -5,6 +5,7 @@
 == 2020/04/20 加入无法连接数据库时的错误警告
 == 2020/04/30 增加软件版本检查
 == 2020/05/09 修复无法连接Zetta数据库的错误提醒
+== 2020/05/26 加入警告弹窗
 =============================================================
 #>
 
@@ -12,6 +13,7 @@ $ComputerList = @()
 $ProviderNameList = @()
 $ZettaInstanceList = @()
 $Path = 'D:\Bat\RCSMonitor'
+$MessageBox = [System.Windows.Forms.MessageBox]
 
 $settingsKeys = @{
     ComputerName = "^\s*ComputerName\s*$";
@@ -118,11 +120,15 @@ foreach($ZettaInstance in $ZettaInstanceList){
     $Conn.Close()
 }
 
-
 Write-Host $QueryResultsZetta
 Write-Host $flag
 Write-Host $WarningComputersZetta
 #RCS Monitor Used
+
+if($flag)
+{
+    $MessageBox::Show("$WarningComputersZetta","数据库警告")
+}
 
 $CheckData.OutString =  "------警告------`n$WarningComputersZetta`n------详情------`n$QueryResultsZetta" 
 $CheckData.OutState = $flag
