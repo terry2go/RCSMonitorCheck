@@ -62,7 +62,7 @@
                 Write-Host $SystemInfo_Video_Result
                 $SystemInfo_Video_Results = $SystemInfo_Video_Results + $SystemInfo_Video_Result + "`r`n"
                 }
-            $SystemInfo_Result = "== " + $ComputerName + " 配置`r`n" + $SystemInfo_Bios_Num_Result + "`r`n" + $SystemInfo_OS_Result + "`r`n" + $SystemInfo_Memory_Results + "`r`n"  + $SystemInfo_Processor_Results+ "`r`n"   + $SystemInfo_Video_Results
+            $SystemInfo_Result = "== " + $ComputerName + " 配置`r`n" + $SystemInfo_Bios_Num_Result + "`r`n" + $SystemInfo_OS_Result + "`r`n" + $SystemInfo_Memory_Results + "`r`n"  + $SystemInfo_Processor_Results+ "`r`n"  + $SystemInfo_Disk_Results+ "`r`n"   + $SystemInfo_Video_Results
             $SystemInfo_Result
         }
     }

@@ -15,6 +15,7 @@
 ==            修复无法连接Zetta数据库的错误提醒
 == 2020/06/18 加入忽略运行过程中的错误
 == 2020/07/01 检查结果加入RCS Check版本显示
+==            修复Team网卡显示的问题
 
 == 计算机检查清单：
 == 1.检查操作系统版本
@@ -166,7 +167,7 @@ function Check-SystemInfo {
                 Write-Host $SystemInfo_Video_Result
                 $SystemInfo_Video_Results = $SystemInfo_Video_Results + $SystemInfo_Video_Result + "`r`n"
                 }
-            $SystemInfo_Result = "== " + $ComputerName + " 配置`r`n`r`n" + $SystemInfo_Bios_Num_Result + "`r`n" + $SystemInfo_OS_Result + "`r`n" + $SystemInfo_Memory_Results + "`r`n"  + $SystemInfo_Processor_Results+ "`r`n"   + $SystemInfo_Video_Results
+            $SystemInfo_Result = "== " + $ComputerName + " 配置`r`n`r`n" + $SystemInfo_Bios_Num_Result + "`r`n" + $SystemInfo_OS_Result + "`r`n" + $SystemInfo_Memory_Results + "`r`n"  + $SystemInfo_Processor_Results+ "`r`n"  + $SystemInfo_Disk_Results+ "`r`n"   + $SystemInfo_Video_Results
             $SystemInfo_Result
         }
     }
