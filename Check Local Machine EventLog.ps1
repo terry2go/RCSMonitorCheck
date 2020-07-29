@@ -2,9 +2,10 @@
 =============================================================
 == Terry Li
 == 2020/04/17 初始版本
+== 2020/07/14 加入忽略运行过程中的错误
 =============================================================
 #>
-
+$ErrorActionPreference= "silentlycontinue"
 $StartTime = [datetime]::today
 $EndTime = [datetime]::now
 $Flag = $false

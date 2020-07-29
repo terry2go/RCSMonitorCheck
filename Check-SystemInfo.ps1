@@ -12,6 +12,7 @@
         $PingResult = Get-WmiObject -query $PingQuery
         if($PingResult.ProtocolAddress){
             if($PingResult.__SERVER -like $ComputerName){
+                $SystemInfo_Model = Get-WmiObject -Class Win32_ComputerSystem -ComputerName $ComputerName
                 $SystemInfo_Bios = Get-WmiObject -Class win32_bios -ComputerName $ComputerName
                 $SystemInfo_OS = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $ComputerName
                 $SystemInfo_Memory = Get-WmiObject -Class Win32_PhysicalMemory -ComputerName $ComputerName
@@ -20,6 +21,7 @@
                 $SystemInfo_Video = Get-WmiObject -Class CIM_VideoController -ComputerName $ComputerName
                 }
             else{
+                $SystemInfo_Model = Get-WmiObject -Class Win32_ComputerSystem -Credential $Cred -ComputerName $ComputerName
                 $SystemInfo_Bios = Get-WmiObject -Class win32_bios -Credential $Cred -ComputerName $ComputerName
                 $SystemInfo_OS = Get-WmiObject -Class Win32_OperatingSystem -Credential $Cred -ComputerName $ComputerName
                 $SystemInfo_Memory = Get-WmiObject -Class Win32_PhysicalMemory -Credential $Cred -ComputerName $ComputerName
@@ -28,8 +30,12 @@
                 $SystemInfo_Video = Get-WmiObject -Class CIM_VideoController -Credential $Cred -ComputerName $ComputerName
                 }
             Write-Host "== "$ComputerName" 配置`r`n"
+            $SystemInfo_Model_Manufacturer = $SystemInfo_Model.Manufacturer
+            $SystemInfo_Model_Model = $SystemInfo_Model.Model
+            $SystemInfo_Model_Result = "机器型号: " + $SystemInfo_Model_Manufacturer + " " + $SystemInfo_Model_Model + "`r`n"
+            Write-Host $SystemInfo_Model_Result
             $SystemInfo_Bios_Num = $SystemInfo_Bios.serialnumber
-            $SystemInfo_Bios_Num_Result = "机器序列号: " + $SystemInfo_Bios_Num + "`r`n"
+            $SystemInfo_Bios_Num_Result = "序列号: " + $SystemInfo_Bios_Num + "`r`n"
             Write-Host $SystemInfo_Bios_Num_Result
             $SystemInfo_OS_Caption = $SystemInfo_OS.caption
             $SystemInfo_OS_Build = $SystemInfo_OS.BuildNumber
@@ -62,7 +68,7 @@
                 Write-Host $SystemInfo_Video_Result
                 $SystemInfo_Video_Results = $SystemInfo_Video_Results + $SystemInfo_Video_Result + "`r`n"
                 }
-            $SystemInfo_Result = "== " + $ComputerName + " 配置`r`n" + $SystemInfo_Bios_Num_Result + "`r`n" + $SystemInfo_OS_Result + "`r`n" + $SystemInfo_Memory_Results + "`r`n"  + $SystemInfo_Processor_Results+ "`r`n"  + $SystemInfo_Disk_Results+ "`r`n"   + $SystemInfo_Video_Results
+            $SystemInfo_Result = "== " + $ComputerName + " 配置`r`n" + $SystemInfo_Model_Result + "`r`n" + $SystemInfo_Bios_Num_Result + "`r`n" + $SystemInfo_OS_Result + "`r`n" + $SystemInfo_Memory_Results + "`r`n"  + $SystemInfo_Processor_Results+ "`r`n"  + $SystemInfo_Disk_Results+ "`r`n"   + $SystemInfo_Video_Results
             $SystemInfo_Result
         }
     }

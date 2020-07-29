@@ -6,8 +6,12 @@
 == 2020/04/30 增加软件版本检查
 == 2020/05/09 修复无法连接Zetta数据库的错误提醒
 == 2020/04/14 支持Win7
+== 2020/07/14 加入忽略运行过程中的错误
+== 2020/07/27 将远程计算机的用户名以及密码单独写到ini配置文件，便于集中修改
+==            加入自定义检测阈值
 =============================================================
 #>
+$ErrorActionPreference= "silentlycontinue"
 $TempFile = "{0:MMddHHmmss}" -f (Get-Date)
 $ComputerList = @()
 $ProviderNameList = @()
@@ -15,18 +19,23 @@ $ZettaInstanceList = @()
 $Path = 'D:\Bat\RCSMonitor'
 
 $settingsKeys = @{
+    UserName = "^\s*UserName\s*$";
+    Password = "^\s*Password\s*$";
+    FreeSpaceThreshold = "^\s*FreeSpaceThreshold\s*$";
+    DatabaseThreshold = "^\s*DatabaseThreshold\s*$";
+    BootTimeThreshold = "^\s*BootTimeThreshold\s*$";
+    NetAdapterSpeedThreshold = "^\s*NetAdapterSpeedThreshold\s*$";
+    LicenseThreshold = "^\s*LicenseThreshold\s*$";
     ComputerName = "^\s*ComputerName\s*$";
     ProviderName = "^\s*ProviderName\s*$";
     ZettaLicenseServer = "^\s*ZettaLicenseServer\s*$";
+    GSLicenseServer = "^\s*GSLicenseServer\s*$";     
     ZettaInstance = "`\s*ZettaInstance\s*$";
+    GSInstance = "`\s*GSInstance\s*$";
+    ZettaDebugPath = "^\s*ZettaDebugPath\s*$";
 }
 
-$UserName = "RCS-USER"
-$Password = ConvertTo-SecureString "RCS" -AsPlainText -Force;
-$Cred = New-Object System.Management.Automation.PSCredential($UserName,$Password)
-
 Get-Content $Path\config.ini | Foreach-Object {
-  
     $var = $_.Split('=')
     $settingsKeys.Keys |% {
         if ($var[0] -match $settingsKeys.Item($_))
@@ -43,9 +52,52 @@ Get-Content $Path\config.ini | Foreach-Object {
             {
                 $ZettaLicenseServerList += $var[1].Trim()
             }
+            elseif ($_ -eq 'GSLicenseServer')
+            {
+                $GSLicenseServerList += $var[1].Trim()
+            }
             elseif ($_ -eq 'ZettaInstance')
             {
                 $ZettaInstanceList += $var[1].Trim()
+            }
+            elseif ($_ -eq 'GSInstance')
+            {
+                $GSInstanceList += $var[1].Trim()
+            }
+            elseif ($_ -eq 'ZettaDebugPath')
+            {
+                $ZettaDebugPathList += $var[1].Trim()
+            }
+            elseif ($_ -eq 'UserName')
+            {
+                $UserName = $var[1].Trim()
+            }
+            elseif ($_ -eq 'Password')
+            {
+                $Password = $var[1].Trim()
+            }            elseif ($_ -eq 'UserName')
+            {
+                $UserName = $var[1].Trim()
+            }
+            elseif ($_ -eq 'FreeSpaceThreshold')
+            {
+                $FreeSpaceThreshold = $var[1].Trim()
+            }
+            elseif ($_ -eq 'DatabaseThreshold')
+            {
+                $DatabaseThreshold = $var[1].Trim()
+            }
+            elseif ($_ -eq 'BootTimeThreshold')
+            {
+                $BootTimeThreshold = $var[1].Trim()
+            }
+            elseif ($_ -eq 'NetAdapterSpeedThreshold')
+            {
+                $NetAdapterSpeedThreshold = $var[1].Trim()
+            }
+            elseif ($_ -eq 'LicenseThreshold')
+            {
+                $LicenseThreshold = $var[1].Trim()
             }
             else
             {
@@ -55,6 +107,9 @@ Get-Content $Path\config.ini | Foreach-Object {
     }
 }
 
+$PasswordNew = ConvertTo-SecureString $Password -AsPlainText -Force;
+$Cred = New-Object System.Management.Automation.PSCredential($UserName,$PasswordNew)
+
 $QueryResultsZetta=""
 $WarningComputersZetta=""
 $flag=$flase
@@ -62,8 +117,8 @@ $flag=$flase
 foreach($ZettaInstance in $ZettaInstanceList){
     $ServerName=$ZettaInstance
     $DatabaseName="ZettaDB"
-    $UserName="sa"
-    $Password="12h2oSt"
+    $SQLUserName="sa"
+    $SQLPassword="12h2oSt"
     $QueryResultZetta ="机器名称: $ServerName`r`n"
     $Query="
     use ZettaDB
@@ -72,7 +127,7 @@ foreach($ZettaInstance in $ZettaInstanceList){
     select top 1 AppVersion from cpu
     "
     $Conn=New-Object System.Data.SqlClient.SQLConnection
-    $ConnectionString = "Data Source=$ServerName;Initial Catalog=$DatabaseName;user id=$UserName;pwd=$Password"
+    $ConnectionString = "Data Source=$ServerName;Initial Catalog=$DatabaseName;user id=$SQLUserName;pwd=$SQLPassword"
     $Conn.ConnectionString=$ConnectionString
     try{
         $Conn.Open()
@@ -123,10 +178,10 @@ foreach($ZettaInstance in $ZettaInstanceList){
             $WarningComputerZetta = ""
             $DBResult = $3[$i] + "的文件大小为: " + $4[$i] + "MB"
             $DBResults = $DBResults + $DBResult + "`r`n"
-            if([Int]$4[$i] -gt 4096){
+            if([Int]$4[$i]/1024 -gt $DatabaseThreshold){
                 $WarningComputerZetta = "机器名称: $ServerName`r`n"
                 $flag=$true
-                $WarningComputerZetta = $WarningComputerZetta + $3[$i] + "大小超过4GB." 
+                $WarningComputerZetta = $WarningComputerZetta + $3[$i] + "大小超过" + $DatabaseThreshold + "GB.`r`n"
             }
             $WarningComputersZetta = $WarningComputersZetta + $WarningComputerZetta + "`r`n"
          }
